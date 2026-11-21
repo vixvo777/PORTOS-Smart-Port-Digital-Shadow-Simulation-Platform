@@ -1,0 +1,20 @@
+PORTOS — V3 STANDALONE CESIUM Digital Shadow
+
+1. Extract this ZIP. Keep smartport_backend and smartport_phase2_complete_frontend as sibling folders.
+2. Backend (Terminal 1, Windows):
+   cd /d PATH\TO\smartport_backend
+   run_windows.bat
+   Wait for Uvicorn at http://127.0.0.1:8000.
+3. Frontend (Terminal 2):
+   cd /d PATH\TO\smartport_phase2_complete_frontend
+   npm install
+   npm run dev
+4. Open http://localhost:5173 and click Digital Shadow.
+   Direct V3 viewer: http://localhost:5173/twin3d.html
+5. To create a production build: npm run build, then npm run preview.
+
+The backend launcher checks and imports the included AIS dataset if needed. Database rebuilds use a temporary database and preserve an already imported AIS table. Stop the backend before manually rebuilding.
+
+The AIS source timezone is unspecified. Cesium maps the source timestamps to its UTC clock as a display convention only. Historical port-call duration is dwell, not verified queue waiting. Low-speed episodes are candidates, not verified anchorage events. What-If delay is modeled.
+
+See README.md and docs/IMPLEMENTATION_STATUS.md for methodology, controls, limitations and validation.

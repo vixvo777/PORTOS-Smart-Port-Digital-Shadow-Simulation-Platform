@@ -1,0 +1,704 @@
+# PORTOS — Smart Port Digital Shadow
+
+## Recovery, Data Integration & Completion Plan
+
+**Project:** PORTOS
+**Location:** New Orleans, Louisiana, USA
+**Frontend:** V3 Standalone Cesium Digital Shadow
+**Historical AIS period:** 15–16 June 2019
+**Goal:** Complete a working historical Digital Shadow, operational analysis and What-If simulation.
+
+---
+
+# 1. Project vision
+
+PORTOS should become a historical-data-driven Smart Port Digital Shadow that allows users to:
+
+1. Visualize actual vessel movements using AIS data.
+2. Replay historical port traffic with a correct Cesium timeline.
+3. Inspect individual vessels and their movement history.
+4. Analyze vessel traffic, speed, anchorage activity and berth occupancy.
+5. Understand historical port activity through dashboards and spatial visualizations.
+6. Run What-If scenarios to test berth capacity, traffic surges and operational disruptions.
+7. Compare baseline and simulated port performance.
+
+**Important architectural decision:** We retain V3, the standalone `twin3d.html` Cesium experience. We do not revert to the V2 embedded Cesium window.
+
+Historical observations, reference geometry and simulated vessels must remain separate.
+
+---
+
+# 2. Existing project information to verify
+
+## 2.1 Historical AIS dataset
+
+Previously identified source:
+
+`smartport_backend/data/source/ais/new_orleans_ais_2019-06-15_16_clean.csv.gz`
+
+Previously reported statistics (verify against the actual ZIP):
+
+| Metric         |      Reported value |
+| -------------- | ------------------: |
+| AIS records    |             651,044 |
+| Unique vessels |                 477 |
+| Start          | 2019-06-15 00:00:00 |
+| End            | 2019-06-16 23:59:59 |
+| Location       |         New Orleans |
+| Source type    |      Historical AIS |
+
+Expected columns:
+
+- mmsi
+- base_date_time
+- longitude
+- latitude
+- sog
+- cog
+- heading
+- navigation_status
+- vessel_name
+- vessel_type
+- vessel_length
+- width
+- draft
+- track_segment
+- gap_seconds
+
+These are actual observed positions. We may interpolate between valid adjacent observations for smooth rendering, but must never bridge long gaps or separate track segments.
+
+## 2.2 Existing backend endpoints
+
+Check whether these endpoints exist and work:
+
+- `GET /api/v1/ais/coverage`
+- `GET /api/v1/ais/tracks`
+- `GET /api/v1/ais/track/{mmsi}`
+
+Previously reported coverage:
+
+- 651,044 records
+- 477 vessels
+- June 15–16, 2019 coverage
+- New Orleans geographical bounds
+
+Do not assume the current ZIP has these exact results until tested.
+
+## 2.3 Port-call and berth information
+
+Previously identified supporting data:
+
+- 183,637 port calls after filtering.
+- 99 spatial berth clusters.
+
+These figures and their methodology must be verified.
+
+A spatial cluster is not automatically an official berth. Port-call dwell duration is not automatically anchorage waiting time.
+
+---
+
+# 3. Phase 1 — Audit the uploaded ZIP
+
+Before changing anything, extract the ZIP into a new working directory and make a backup.
+
+## Frontend files to inspect
+
+- `package.json`
+- package lockfile
+- `vite.config.*`
+- `src/App.tsx`
+- `src/CesiumPort.tsx`
+- `src/lib.ts`
+- `src/styles.css`
+- `public/twin3d.html`
+- environment configuration files
+
+Check:
+
+- Does Digital Shadow open a separate `twin3d.html` page?
+- Are Cesium Animation and Timeline enabled?
+- Is V3 navigation preserved?
+- Does the page use the correct API URL?
+- Are What-If controls still present?
+- Are any old V2 components interfering with V3?
+
+## Backend files to inspect
+
+- `requirements.txt` or `pyproject.toml`
+- application entry point
+- API router registration
+- AIS router
+- AIS data loader/service
+- scenario allocation router
+- scenario allocation service
+- port-call data processing
+- berth data processing
+- CORS configuration
+- settings and environment configuration
+- existing tests
+
+## Data files to inventory
+
+Inspect every file under the data directories.
+
+Record:
+
+- Filename
+- Format
+- Number of records
+- Time coverage
+- Geographic coverage
+- Columns
+- Missing values
+- Duplicate records
+- Source and provenance
+- Intended purpose
+
+Create:
+
+`docs/DATA_INVENTORY.md`
+
+---
+
+# 4. Phase 2 — Fix the current application errors
+
+The current screenshot shows three main failures.
+
+## Issue A: API OFFLINE
+
+Investigate:
+
+1. Backend startup command.
+2. Actual listening host and port.
+3. API base URL in `twin3d.html`.
+4. Vite proxy configuration.
+5. CORS.
+6. Backend logs.
+7. Browser Network tab.
+
+Test:
+
+- Backend health endpoint.
+- `/docs`
+- `/api/v1/ais/coverage`
+
+The frontend should show API ONLINE only after a real successful request.
+
+## Issue B: JavaScript null error
+
+Current error:
+
+`Cannot set properties of null (setting 'textContent')`
+
+Search the frontend for:
+
+- `textContent`
+- `innerHTML`
+- `.value`
+- `.checked`
+- `classList`
+
+Find which DOM element is missing or queried before it exists.
+
+Fix the actual missing element or incorrect ID. Add safe handling for optional elements.
+
+Do not simply suppress the exception.
+
+Acceptance:
+
+- No JavaScript errors on initial page load.
+- No errors when changing modes.
+- No errors when loading a date.
+- No errors when selecting a vessel.
+- No errors when toggling layers.
+
+## Issue C: Historical Cesium clock shows 2026
+
+This is a major problem.
+
+Selected date:
+
+`2019-06-15`
+
+But the current Cesium timeline shows November 2026.
+
+The selected historical date must control:
+
+- `viewer.clock.startTime`
+- `viewer.clock.stopTime`
+- `viewer.clock.currentTime`
+- `viewer.clock.multiplier`
+- `viewer.clock.clockRange`
+- `viewer.timeline.zoomTo()`
+
+Use explicit UTC timestamps matching the AIS source.
+
+Historical mode must never initialize its timeline from the computer's current date.
+
+For the two-day dataset, support the complete June 15–16 interval.
+
+Acceptance:
+
+- June 15 selection displays June 15–16, 2019.
+- June 16 selection displays the corresponding historical day.
+- No 2026 timeline appears in historical mode.
+- Playback, pause, speed and scrubbing work.
+
+---
+
+# 5. Phase 3 — Complete AIS integration
+
+## 5.1 Use the full dataset
+
+Use the entire cleaned New Orleans AIS dataset.
+
+Do not use only a preview or sample for historical analysis.
+
+The browser should request bounded time windows and appropriate display data rather than creating hundreds of thousands of individual Cesium entities.
+
+## 5.2 Data validation
+
+Run a complete quality check:
+
+- Total records
+- Unique MMSIs
+- Timestamp range
+- Missing values
+- Duplicate positions
+- Invalid coordinates
+- Invalid SOG
+- COG and heading quality
+- Navigation status distribution
+- Vessel type distribution
+- Vessel dimensions
+- Per-vessel record counts
+- Track segment counts
+- Timestamp ordering
+- Long gaps
+- Suspicious position jumps
+
+Save results in:
+
+`analysis/ais_quality_report.csv`
+
+## 5.3 Track construction
+
+Rules:
+
+1. Group positions by MMSI.
+2. Separate track segments.
+3. Sort observations by timestamp.
+4. Use recorded coordinates.
+5. Preserve recorded timestamps.
+6. Never connect separate segments.
+7. Never interpolate across long gaps.
+8. Handle stationary vessels correctly.
+9. Keep source observations accessible for inspection.
+
+## 5.4 Backend API
+
+Verify and improve:
+
+- AIS coverage.
+- AIS track summaries.
+- Individual vessel tracks.
+
+Recommended improvements:
+
+- Time filtering.
+- Geographic bounding-box filtering.
+- Vessel-type filtering.
+- Pagination.
+- Minimum point count.
+- Aggregate statistics.
+- Explicit UTC timestamps.
+- Caching for immutable historical data.
+
+Avoid making the frontend issue hundreds of unnecessary requests.
+
+## 5.5 Cesium visualization
+
+Implement:
+
+- Actual vessel positions.
+- Actual historical tracks.
+- Time-based playback.
+- Vessel labels.
+- Vessel selection.
+- Track highlighting.
+- Vessel detail panel.
+- SOG and COG information.
+- Vessel-type filtering.
+- Layer controls.
+- Loaded record and vessel counts.
+
+Use a clear visual distinction for actual AIS vessels.
+
+---
+
+# 6. Phase 4 — Historical data analysis
+
+This phase is essential. PORTOS should not be just a 3D map.
+
+## A. Vessel traffic analysis
+
+Calculate:
+
+- Vessels observed per hour.
+- AIS observations per hour.
+- Vessel type distribution.
+- Traffic density.
+- Peak traffic periods.
+- Spatial distribution of traffic.
+- Vessel activity by port area.
+
+Visualizations:
+
+- Hourly traffic chart.
+- Vessel type distribution.
+- Traffic density heatmap.
+- Spatial traffic map.
+
+## B. Vessel movement analysis
+
+Calculate:
+
+- Average speed.
+- Median speed.
+- Maximum observed speed.
+- Speed distribution.
+- Slow-moving episodes.
+- Stationary episodes.
+- Track distance within valid observed segments.
+- Direction distribution.
+- Track completeness.
+
+## C. Anchorage analysis
+
+Identify potential anchorage activity using:
+
+- Validated anchorage polygons.
+- Vessel position.
+- SOG thresholds.
+- Time spent inside the zone.
+- Track continuity.
+
+If anchorage arrival and berth entry can be established, calculate waiting time.
+
+If those events cannot be established, report anchorage dwell or low-speed episodes separately.
+
+Do not claim observed queue waiting time without supporting event timestamps.
+
+## D. Berth occupancy analysis
+
+First validate the berth reference data.
+
+Determine:
+
+- Are berth locations official?
+- Are they spatial clusters?
+- Are they inferred from AIS?
+- Is there a berth ID?
+- Can a vessel be assigned reliably?
+
+Then calculate, where supported:
+
+- Occupied berths over time.
+- Occupancy ratio.
+- Peak simultaneous occupancy.
+- Vessel distribution by berth.
+- Berth utilization over the selected period.
+
+Clearly distinguish inferred berth clusters from verified physical port capacity.
+
+---
+
+# 7. Phase 5 — What-If simulation
+
+What-If must be independent of historical AIS playback.
+
+Historical data provides the baseline context. Scenario results are generated by a model.
+
+## Existing controls to preserve
+
+- Scenario mode.
+- Time horizon.
+- Active berths.
+- Traffic multiplier.
+- Blocked berth IDs.
+- Scheduling strategy.
+- Run scenario.
+
+## Scenario experiments
+
+### Scenario 1: Baseline
+
+Use the default operational assumptions.
+
+### Scenario 2: Traffic surge
+
+Increase traffic multiplier.
+
+Observe:
+
+- Modeled queue length.
+- Modeled scheduling delay.
+- Berth utilization.
+- Throughput.
+
+### Scenario 3: Berth closure
+
+Block one or more berths.
+
+Observe:
+
+- Vessel reassignment.
+- Capacity reduction.
+- Modeled delay.
+- Unserved vessels.
+
+### Scenario 4: Combined disruption
+
+Increase traffic and block berths simultaneously.
+
+### Scenario 5: Capacity expansion
+
+Increase the number of active berths as a hypothetical experiment.
+
+### Scenario 6: Strategy comparison
+
+Compare supported scheduling strategies.
+
+## Scenario outputs
+
+- Vessels served.
+- Berth assignments.
+- Berth utilization.
+- Modeled queue length.
+- Average scheduling delay.
+- Median scheduling delay.
+- Maximum scheduling delay.
+- Throughput.
+- Unserved vessels.
+- Completion time.
+
+**Important:** The existing allocator was previously described as a deterministic greedy earliest-completion scheduler. Verify the code. Do not claim global optimization unless it is actually implemented and tested.
+
+All What-If waiting times must be labelled modeled scheduling delays, not historical observed waiting times.
+
+---
+
+# 8. Phase 6 — Dashboard and user experience
+
+Preserve the V3 standalone Cesium interface.
+
+## Historical mode
+
+- Actual AIS playback.
+- Historical date and time.
+- Vessel selection.
+- Historical vessel details.
+- Traffic analysis.
+- Berth occupancy.
+- Anchorage activity.
+- Historical data coverage.
+
+## What-If mode
+
+- Scenario controls.
+- Modeled vessels.
+- Berth assignment visualization.
+- Capacity metrics.
+- Scenario comparison.
+- Simulated timeline.
+
+## Shared UI
+
+- API online/offline status.
+- Loading states.
+- Error states.
+- Clear legend.
+- Home View.
+- Free Camera.
+- Cesium Animation.
+- Cesium Timeline.
+
+Use distinct labels and visual styles for:
+
+1. Observed AIS.
+2. Reference port geometry.
+3. Simulated scenario vessels.
+
+---
+
+# 9. Phase 7 — Testing
+
+## Backend
+
+- Backend starts.
+- Health endpoint works.
+- AIS coverage works.
+- AIS tracks work.
+- Individual vessel tracks work.
+- Scenario allocation works.
+- Invalid requests return appropriate errors.
+- CORS works.
+- Data paths work from documented startup directory.
+
+## Frontend
+
+- V3 opens as a separate page.
+- No JavaScript errors.
+- API connection works.
+- Historical date is correct.
+- Timeline is correct.
+- Vessel playback works.
+- Vessel selection works.
+- Layer toggles work.
+- What-If works.
+- Mode switching works.
+
+## Data
+
+- Record counts verified.
+- Vessel counts verified.
+- Timestamp coverage verified.
+- Coordinates validated.
+- Track gaps respected.
+- Analysis reproducible.
+
+---
+
+# 10. Datasets to use
+
+## Primary dataset
+
+**New Orleans AIS — 15–16 June 2019**
+
+This is the primary source for vessel movement and historical traffic.
+
+## Supporting dataset
+
+**Port-call records**
+
+Use after validating timestamps, location filtering and source meaning.
+
+Useful for port-call context and dwell analysis.
+
+## Supporting dataset
+
+**Berth and port-boundary geometry**
+
+Use existing files after validating coordinate reference systems and provenance.
+
+Prefer official berth geometry if already available.
+
+## Optional enrichment
+
+If time permits:
+
+- NOAA tide/water-level observations for the same dates.
+- Weather observations for the same dates.
+- Anchorage polygons.
+- Navigational channel geometry.
+- Official berth/terminal reference data.
+
+Do not add unrelated datasets just to increase the number of data sources. Every dataset must have a clear analytical purpose and matching time/geographic coverage.
+
+---
+
+# 11. Execution order — deadline priority
+
+## Priority 1: Make the application work
+
+- [ ] Extract and audit ZIP.
+- [ ] Start backend.
+- [ ] Fix API OFFLINE.
+- [ ] Fix JavaScript null error.
+- [ ] Fix historical Cesium clock.
+- [ ] Confirm V3 navigation.
+- [ ] Confirm What-If controls remain functional.
+
+## Priority 2: Make historical AIS work
+
+- [ ] Verify complete AIS source.
+- [ ] Verify coverage API.
+- [ ] Verify track API.
+- [ ] Verify individual vessel API.
+- [ ] Display actual vessels.
+- [ ] Implement time playback.
+- [ ] Test gaps and segments.
+- [ ] Test vessel selection.
+
+## Priority 3: Complete analysis
+
+- [ ] AIS quality report.
+- [ ] Hourly traffic analysis.
+- [ ] Vessel speed analysis.
+- [ ] Traffic density map.
+- [ ] Anchorage episode analysis.
+- [ ] Berth occupancy analysis.
+- [ ] Dashboard charts.
+
+## Priority 4: Complete What-If
+
+- [ ] Baseline scenario.
+- [ ] Traffic surge.
+- [ ] Berth closure.
+- [ ] Combined disruption.
+- [ ] Capacity expansion.
+- [ ] Scenario comparison.
+- [ ] Modeled performance metrics.
+
+## Priority 5: Final presentation
+
+- [ ] Test full application.
+- [ ] Prepare methodology.
+- [ ] Prepare screenshots.
+- [ ] Prepare demonstration script.
+- [ ] Prepare final project ZIP.
+- [ ] Document limitations and assumptions.
+
+---
+
+# 12. Final demonstration flow
+
+The final demonstration should follow this sequence:
+
+1. Open PORTOS command centre.
+2. Open V3 standalone Digital Shadow.
+3. Show API online and AIS coverage.
+4. Select June 15, 2019.
+5. Play actual AIS vessel movements.
+6. Select a vessel and inspect its details.
+7. Show historical traffic density.
+8. Show vessel speed and movement analysis.
+9. Show anchorage and berth analysis.
+10. Open What-If mode.
+11. Run the baseline scenario.
+12. Block a berth and increase traffic.
+13. Compare modeled results.
+14. Explain historical observations versus simulated outcomes.
+
+---
+
+# 13. Definition of done
+
+- [ ] V3 standalone Cesium is preserved.
+- [ ] Backend runs reliably.
+- [ ] API status is correct.
+- [ ] JavaScript errors are resolved.
+- [ ] Historical timeline uses 2019 timestamps.
+- [ ] Complete AIS data is verified.
+- [ ] Actual vessel playback works.
+- [ ] Vessel inspection works.
+- [ ] Traffic analysis is complete.
+- [ ] Berth analysis is defensible.
+- [ ] What-If scenarios work.
+- [ ] Historical and simulated data are separated.
+- [ ] Methodology and limitations are documented.
+- [ ] Final demo has been tested.
+
+---
+
+**Current status note:** The uploaded archive has been received, but a runtime error has prevented a fresh extraction and source-code audit. Previously reported file paths, endpoint availability and dataset statistics must therefore be checked against the actual archive before implementation is considered complete.

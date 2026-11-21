@@ -1,0 +1,9 @@
+{
+  "name":"portos-smart-port-digital-twin",
+  "private":true,
+  "version":"2.0.0",
+  "type":"module",
+  "scripts":{"dev":"vite --host 0.0.0.0","build":"tsc -b && vite build","preview":"vite preview --host 0.0.0.0","typecheck":"tsc --noEmit"},
+  "dependencies":{"@cesium/engine":"^13.0.0","cesium":"^1.127.0","lucide-react":"^0.468.0","react":"^18.3.1","react-dom":"^18.3.1","recharts":"^2.15.0"},
+  "devDependencies":{"@types/geojson":"^7946.0.16","@types/react":"^18.3.18","@types/react-dom":"^18.3.5","@vitejs/plugin-react":"^4.3.4","typescript":"~5.6.3","vite":"^6.0.7","vite-plugin-cesium":"^1.2.23"}
+}

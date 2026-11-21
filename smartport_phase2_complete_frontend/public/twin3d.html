@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>PORTOS — Cesium 3D Digital Shadow</title>
+  <link rel="stylesheet" href="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Widgets/widgets.css">
+  <script src="https://cesium.com/downloads/cesiumjs/releases/1.120/Build/Cesium/Cesium.js"></script>
+  <style>
+    :root{color-scheme:dark;--bg:#07111b;--panel:rgba(8,20,31,.94);--line:#294253;--muted:#91a6b5;--cyan:#4bd0df;--gold:#e4b568}
+    *{box-sizing:border-box}html,body,#cesiumContainer{margin:0;width:100%;height:100%;overflow:hidden;background:#07111b;font-family:Inter,system-ui,Segoe UI,sans-serif}
+    #ui{position:absolute;z-index:20;top:12px;left:12px;width:360px;max-height:calc(100vh - 24px);overflow:auto;padding:14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;color:#e7eef4;box-shadow:0 12px 38px #0008;font-size:12px;line-height:1.45;backdrop-filter:blur(12px)}
+    .brand{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}.brand b{letter-spacing:1.7px;font-size:15px}.brand b span{color:var(--cyan)}.brand small{color:#7e96a7;font:9px ui-monospace,monospace;letter-spacing:1px}
+    .links{display:flex;gap:12px;padding:7px 0 10px;border-bottom:1px solid #203747;margin-bottom:10px}.links a{color:#8edbe4;text-decoration:none;font-size:11px}.links a:hover{color:#fff}
+    .status{display:inline-block;border-radius:5px;padding:3px 7px;background:#153a37;color:#78e0b8;font:9px ui-monospace,monospace;letter-spacing:.6px}.status.warn{background:#43341e;color:#f0c77f}.status.err{background:#451e24;color:#ffb1ae}
+    .row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:8px 0}.field{display:grid;gap:4px;color:#93a8b7;font-size:10px}.field input,.field select,.field textarea,select,input[type=date],input[type=number]{min-width:0;width:100%;background:#0c1d2a;border:1px solid #2b4354;border-radius:5px;color:#e6eef4;padding:7px;font:inherit;font-size:11px;outline:none}.field input:focus,.field select:focus{border-color:#51c6d2}
+    input[type=range]{width:100%;accent-color:var(--cyan)}.rangehead{display:flex;justify-content:space-between;color:#9eb2bf;font-size:10px;margin-bottom:2px}.rangehead b{color:#e9f2f5;font:11px ui-monospace,monospace}
+    button{border:1px solid #315568;background:#102b3a;color:#cce4eb;border-radius:6px;padding:7px 9px;font-size:10px;font-weight:700;cursor:pointer}button:hover{background:#174154;border-color:#54bfd0}button.primary{background:#176071;border-color:#2e91a0;color:white}button.gold{background:#3a2c18;border-color:#80643a;color:#f2cc87}button:disabled{opacity:.5;cursor:wait}
+    .actions{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.section{border-top:1px solid #203747;margin-top:10px;padding-top:10px}.section-title{color:#c9d9e2;font:10px ui-monospace,monospace;letter-spacing:1px;margin-bottom:7px}.toggles{display:grid;grid-template-columns:1fr 1fr;gap:6px;color:#9db0bd;font-size:10px}.toggles label{display:flex;align-items:center;gap:6px}.toggles input{accent-color:var(--cyan)}
+    #hud{margin-top:10px;padding:9px;background:#0b1b28;border:1px solid #213b4b;border-radius:7px;color:#a6bac7;font:10px/1.7 ui-monospace,monospace}#hud b{color:#ecf4f7}#selection{margin-top:8px;padding:9px;background:#0d202e;border:1px solid #274355;border-radius:7px;min-height:54px;color:#a9bdc9;font-size:10px;line-height:1.6}
+    #message{margin-top:8px;color:#ffb8ad;font-size:10px;white-space:pre-wrap}.fineprint{color:#7e94a4;font-size:9px;line-height:1.5;margin-top:8px}.fineprint b{color:#b8cbd5}
+    #sceneBadge{position:absolute;z-index:10;right:14px;top:14px;background:#081824dd;border:1px solid #294455;border-radius:7px;padding:8px 10px;color:#a9c0cd;font:9px ui-monospace,monospace;letter-spacing:1px;pointer-events:none}#sceneBadge strong{color:#68d5df}
+    #north{position:absolute;z-index:10;right:20px;top:62px;width:42px;height:42px;border:1px solid #3a596a;background:#0b1b29cc;border-radius:50%;display:grid;place-items:center;color:#cfdee5;font:11px ui-monospace,monospace;pointer-events:none}
+    .cesium-viewer-bottom{left:0;right:0}.cesium-viewer-timelineContainer{left:160px;right:5px;height:28px}.cesium-viewer-animationContainer{left:6px;bottom:34px;width:112px;height:112px}.cesium-viewer-timelineContainer .cesium-timeline-bar{height:27px}
+    @media(max-width:700px){#ui{width:min(340px,calc(100vw - 20px));left:10px;top:10px;max-height:65vh;padding:11px}#sceneBadge{top:auto;bottom:44px;right:10px}.cesium-viewer-animationContainer{transform:scale(.72);transform-origin:bottom left;bottom:32px}.cesium-viewer-timelineContainer{left:92px;right:4px}.cesium-viewer-bottom{height:32px}}
+  </style>
+</head>
+<body>
+  <div id="cesiumContainer"></div>
+  <div id="sceneBadge"><strong>PORTOS / CESIUMJS</strong> · NEW ORLEANS · 2019 SOURCE DATA</div>
+  <div id="north">N<br>↑</div>
+  <aside id="ui">
+    <div class="brand"><div><b>PORT<span>OS</span></b><br><small>CESIUM 3D Digital Shadow</small></div><span id="apiStatus" class="status warn">CONNECTING</span></div>
+    <div class="links"><a href="/">← Command center</a><a href="/docs" target="_blank" rel="noreferrer">API docs ↗</a></div>
+
+    <div class="row">
+      <label class="field">Scenario mode
+        <select id="mode"><option value="historical">Historical port calls</option><option value="scenario">What-If allocation</option></select>
+      </label>
+      <label class="field">Historical date
+        <input id="date" type="date" min="2019-01-01" max="2019-06-16" value="2019-06-15">
+      </label>
+    </div>
+    <div class="actions"><button id="loadHistorical" class="primary">Load historical day</button><button id="home">Home view</button><button id="free">Free camera</button></div>
+
+    <div id="whatIfPanel" class="section" style="display:none">
+      <div class="section-title">WHAT-IF PARAMETERS</div>
+      <div class="row">
+        <label class="field"><span class="rangehead"><span>Active berth clusters</span><b id="berthValue">6</b></span><input id="activeBerths" type="range" min="1" max="99" value="6"></label>
+        <label class="field"><span class="rangehead"><span>Traffic multiplier</span><b id="trafficValue">1.5×</b></span><input id="traffic" type="range" min="1" max="3" step="0.1" value="1.5"></label>
+      </div>
+      <div class="row">
+        <label class="field">Planning horizon
+          <select id="horizon"><option value="24">24 hours</option><option value="48">48 hours</option><option value="72">72 hours</option><option value="168">7 days</option></select>
+        </label>
+        <label class="field">Allocation strategy
+          <select id="strategy"><option value="optimized">Earliest completion heuristic</option><option value="historical_fifo">Historical berth preference / FIFO</option></select>
+        </label>
+      </div>
+      <label class="field">Blocked berth-cluster IDs (comma separated, optional)
+        <input id="blocked" type="text" placeholder="e.g. 1590, 1591">
+      </label>
+      <button id="runScenario" class="gold">Run What-If & show in Cesium</button>
+      <div class="fineprint">What-If assignments and waiting times are modelled outputs. Historical observations are not modified.</div>
+    </div>
+
+    <div class="section">
+      <div class="section-title">SCENE LAYERS</div>
+      <div class="toggles">
+        <label><input id="showPort" type="checkbox" checked> Port boundary</label>
+        <label><input id="showBerths" type="checkbox" checked> Berth clusters</label>
+        <label><input id="showRoutes" type="checkbox" checked> Vessel routes</label>
+        <label><input id="showLabels" type="checkbox" checked> Vessel labels</label>
+      </div>
+      <div class="row">
+        <label class="field">Playback speed
+          <select id="speed"><option value="1">1×</option><option value="10">10×</option><option value="60">60×</option><option value="300" selected>300×</option><option value="900">900×</option></select>
+        </label>
+        <label class="field">Scene density
+          <select id="density"><option value="80" selected>80 ships</option><option value="120">120 ships</option><option value="180">180 ships</option><option value="220">220 ships</option></select>
+        </label>
+      </div>
+    </div>
+
+    <div id="hud">Loading New Orleans port geometry and historical data…</div>
+    <div id="selection">Select a vessel in the 3D scene to inspect its call, assigned berth and current state.</div>
+    <div id="message"></div>
+    <span id="aisStatus" hidden></span>
+    <div class="fineprint"><b>Data truth:</b> port-call timestamps and stop locations are historical records. AIS ship movement follows the supplied timestamped observations; long gaps and source track-segment boundaries are not connected. Historical port-call dwell is not verified anchorage queue waiting. What-If waiting is modelled, not observed.</div>
+  </aside>
+
+<script>
+(() => {
+  if (typeof Cesium === 'undefined') {
+    document.getElementById('message').textContent = 'CesiumJS could not load. Check internet access to the Cesium CDN.';
+    document.getElementById('apiStatus').textContent = 'CESIUM OFFLINE';
+    document.getElementById('apiStatus').className = 'status err';
+    return;
+  }
+
+  const C = Cesium;
+  const $ = id => document.getElementById(id);
+  const params = new URLSearchParams(location.search);
+  const API = (params.get('api') || `${location.protocol}//${location.hostname}:8000`).replace(/\/$/, '');
+  $('date').value = params.get('date') || '2019-06-15';
+  if (params.get('mode') === 'scenario') $('mode').value = 'scenario';
+  if (params.has('horizon')) $('horizon').value = params.get('horizon');
+  if (params.has('active_berths')) $('activeBerths').value = params.get('active_berths');
+  if (params.has('traffic_multiplier')) $('traffic').value = params.get('traffic_multiplier');
+  if (params.has('strategy')) $('strategy').value = params.get('strategy');
+  if (params.has('blocked_berth_ids')) $('blocked').value = params.get('blocked_berth_ids');
+  $('whatIfPanel').style.display = $('mode').value === 'scenario' ? 'block' : 'none';
+
+  const viewer = new C.Viewer('cesiumContainer', {
+    baseLayer: new C.ImageryLayer(new C.OpenStreetMapImageryProvider({url:'https://tile.openstreetmap.org/'})),
+    animation:true, timeline:true, baseLayerPicker:false, geocoder:false, homeButton:false, targetFrameRate:30,
+    sceneModePicker:false, navigationHelpButton:false, fullscreenButton:false,
+    infoBox:false, selectionIndicator:false, shouldAnimate:false,
+    terrainProvider:new C.EllipsoidTerrainProvider()
+  });
+  viewer.scene.globe.enableLighting = true;
+  viewer.scene.globe.depthTestAgainstTerrain = false;
+  viewer.scene.backgroundColor = C.Color.fromCssColorString('#07111b');
+  viewer.scene.screenSpaceCameraController.maximumZoomDistance = 3e7;
+  viewer.scene.screenSpaceCameraController.minimumZoomDistance = 30;
+  viewer.screenSpaceEventHandler.removeInputAction(C.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
+
+  let portSource=null, berthSource=null, berthMarkers=[], shipEntities=[], routeEntities=[];
+  let berthRows=[], berthById=new Map(), berthGeoJSON=null, berthSpatialFeatures=[], aisBerthOccupancyIntervals=new Map(), activeRecords=[], sceneHome=()=>{}, sceneMode='historical', sceneEndSeconds=0;
+  let lastHud=0, selectedRecord=null, totalRecords=0, renderLimit=120, currentScenario=null, hudSummaryHtml='';
+  let loadedAISTracks=[], aisPointCount=0, aisVesselCount=0, aisTrailStates=[];
+  // Historical berth occupancy needs calls that began before the selected replay day.
+  let berthOccupancyRecords=[];
+  const isoSeconds = s => new Date(String(s).replace(' ','T') + (String(s).endsWith('Z')?'':'Z')).getTime()/1000;
+  const jd = s => C.JulianDate.fromDate(new Date(s*1000));
+  const v3 = (x,y,z) => new C.Cartesian3(x,y,z);
+  const c3 = (lon,lat,h=8) => C.Cartesian3.fromDegrees(lon,lat,h);
+  const say = (msg='') => $('message').textContent = msg;
+  const fmt = n => Number(n||0).toLocaleString('en-US');
+  const safe = s => String(s ?? '').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
+
+  async function api(path, options) {
+    const response = await fetch(API + path, options);
+    if (!response.ok) {
+      const body = await response.text().catch(()=> '');
+      throw new Error(`API ${response.status} ${path}: ${body.slice(0,260)}`);
+    }
+    return response.json();
+  }
+
+  function setClock(startSeconds, endSeconds) {
+    const start=jd(startSeconds), stop=jd(endSeconds);
+    viewer.clock.startTime=start.clone(); viewer.clock.stopTime=stop.clone();
+    viewer.clock.currentTime=start.clone(); viewer.clock.clockRange=C.ClockRange.LOOP_STOP;
+    viewer.clock.multiplier=Number($('speed').value)||300;
+    viewer.clock.shouldAnimate=true;
+    viewer.timeline.zoomTo(start,stop);
+    sceneEndSeconds=endSeconds;
+  }
+
+  function freeCam(){ viewer.trackedEntity=undefined; viewer.selectedEntity=undefined; viewer.camera.lookAtTransform(C.Matrix4.IDENTITY); }
+  function goHome(){ freeCam(); sceneHome(); }
+  $('home').addEventListener('click',goHome);
+  $('free').addEventListener('click',freeCam);
+  $('speed').addEventListener('change',()=>viewer.clock.multiplier=Number($('speed').value)||300);
+  $('mode').addEventListener('change',()=>{ $('whatIfPanel').style.display=$('mode').value==='scenario'?'block':'none'; });
+  $('activeBerths').addEventListener('input',()=> $('berthValue').textContent=$('activeBerths').value);
+  $('traffic').addEventListener('input',()=> $('trafficValue').textContent=Number($('traffic').value).toFixed(1)+'×');
+
+  async function loadInfrastructure(){
+    const [portGeo,berthGeo,bList,overview]=await Promise.all([
+      api('/api/v1/map/port'),api('/api/v1/map/berths'),api('/api/v1/berths'),api('/api/v1/overview')
+    ]);
+    berthRows=bList; berthById=new Map(bList.map(b=>[String(b.berth_id),b])); berthGeoJSON=berthGeo; berthSpatialFeatures=prepareBerthSpatialFeatures(berthGeo);
+    if(portSource) viewer.dataSources.remove(portSource,true);
+    if(berthSource) viewer.dataSources.remove(berthSource,true);
+    portSource=await C.GeoJsonDataSource.load(portGeo,{clampToGround:true});
+    portSource.name='New Orleans port boundary';
+    portSource.entities.values.forEach(e=>{
+      if(e.polygon){e.polygon.height=0;e.polygon.material=C.Color.fromCssColorString('#1d90a8').withAlpha(.10);e.polygon.outline=true;e.polygon.outlineColor=C.Color.fromCssColorString('#44c9df').withAlpha(.9)}
+      if(e.polyline){e.polyline.width=3;e.polyline.material=C.Color.fromCssColorString('#44c9df')}
+    });
+    await viewer.dataSources.add(portSource);
+    berthSource=await C.GeoJsonDataSource.load(berthGeo,{clampToGround:false});
+    berthSource.name='New Orleans berth / stopping clusters';
+    berthSource.entities.values.forEach((e,i)=>{
+      if(e.polygon){
+        e.polygon.height=0; e.polygon.extrudedHeight=5;
+        e.polygon.material=C.Color.fromCssColorString('#f2c94c').withAlpha(.38);
+        e.polygon.outline=true; e.polygon.outlineColor=C.Color.fromCssColorString('#ffe082').withAlpha(.98);
+        e.polygon.outlineWidth=1.5;
+      }
+    });
+    await viewer.dataSources.add(berthSource);
+    $('showPort').addEventListener('change',()=>{if(portSource)portSource.show=$('showPort').checked});
+    $('showBerths').addEventListener('change',()=>{if(berthSource)berthSource.show=$('showBerths').checked;berthMarkers.forEach(e=>e.show=$('showBerths').checked)});
+    rebuildBerthMarkers([]);
+    $('apiStatus').textContent='API ONLINE'; $('apiStatus').className='status';
+    $('hud').innerHTML=`<b>New Orleans, USA</b><br>${fmt(overview.calls)} historical port calls · ${fmt(overview.vessels)} vessels<br>${fmt(overview.berth_clusters)} spatial berth clusters · ${safe(overview.first_event)} — ${safe(overview.last_event)}`;
+    await viewer.flyTo(portSource,{duration:1.8});
+    sceneHome=()=>{ if(portSource) viewer.flyTo(portSource,{duration:1.2}); };
+  }
+
+  function routeCurve(a,b,n=18,side=0){
+    const dx=b[0]-a[0],dy=b[1]-a[1],d=Math.hypot(dx,dy)||1;
+    const off=Math.min(d*.16,.004)*(side===0?1:side);
+    const px=-dy/d*off,py=dx/d*off;
+    const p1=[a[0]+dx*.30+px,a[1]+dy*.30+py],p2=[a[0]+dx*.72+px,a[1]+dy*.72+py];
+    const out=[];
+    for(let i=0;i<=n;i++){const t=i/n,u=1-t;out.push([u*u*u*a[0]+3*u*u*t*p1[0]+3*u*t*t*p2[0]+t*t*t*b[0],u*u*u*a[1]+3*u*u*t*p1[1]+3*u*t*t*p2[1]+t*t*t*b[1]])}
+    return out;
+  }
+
+  function uniqueSampleList(points){
+    const out=[];
+    for(const p of points.sort((a,b)=>a.t-b.t)){
+      if(!Number.isFinite(p.t)||!Number.isFinite(p.lon)||!Number.isFinite(p.lat))continue;
+      if(out.length && p.t<=out[out.length-1].t) continue;
+      out.push(p);
+    }
+    return out;
+  }
+  function addSegment(samples,a,b,t0,t1,n=12){
+    if(t1<=t0)return;
+    const pts=routeCurve(a,b,n);
+    for(let i=0;i<=n;i++)samples.push({t:t0+(t1-t0)*i/n,lon:pts[i][0],lat:pts[i][1],h:8});
+  }
+  function addHold(samples,point,t0,t1){
+    if(t1<=t0)return;
+    samples.push({t:t0,lon:point[0],lat:point[1],h:8},{t:t1,lon:point[0],lat:point[1],h:8});
+  }
+
+  function offsetAround(dest,index,scale=1){
+    // Visual-only approach corridor. These offsets are illustrative, not navigational waypoints.
+    const lane=((index%9)-4)*.0012;
+    return [dest[0]-.020*scale+lane,dest[1]-.012*scale+lane*.45];
+  }
+
+  function recordTimes(r){
+    if(sceneMode==='scenario')return {arrival:isoSeconds(r.arrival_proxy),start:isoSeconds(r.assigned_start),end:isoSeconds(r.assigned_end)};
+    return {arrival:isoSeconds(r.start_time),start:isoSeconds(r.start_time),end:isoSeconds(r.end_time)};
+  }
+  function recordStatus(r,timeSeconds){
+    const t=recordTimes(r);
+    if(sceneMode==='scenario'){
+      if(timeSeconds<t.arrival)return 'APPROACHING';
+      if(timeSeconds<t.start)return `WAITING ${((t.start-timeSeconds)/3600).toFixed(1)} h`;
+      if(timeSeconds<=t.end)return 'AT BERTH / SERVICE';
+      return 'DEPARTED';
+    }
+    if(timeSeconds<t.start)return 'APPROACHING';
+    if(timeSeconds<=t.end)return 'AT STOP / DWELL';
+    return 'DEPARTED';
+  }
+
+  function offsetPosition(positionProperty,orientationProperty,x,y,z){
+    return new C.CallbackProperty(time=>{
+      const p=positionProperty.getValue(time); if(!p)return undefined;
+      const q=orientationProperty.getValue(time); if(!q)return p;
+      const m=C.Matrix3.fromQuaternion(q,new C.Matrix3());
+      const off=C.Matrix3.multiplyByVector(m,new C.Cartesian3(x,y,z),new C.Cartesian3());
+      return C.Cartesian3.add(p,off,new C.Cartesian3());
+    },false);
+  }
+
+  function clearShips(){
+    shipEntities.forEach(e=>viewer.entities.remove(e)); routeEntities.forEach(e=>viewer.entities.remove(e));
+    shipEntities=[];routeEntities=[];activeRecords=[];aisTrailStates=[];aisVesselCount=0;aisPointCount=0;
+  }
+
+
+  // AIS-based occupancy corroboration:
+  // A berth is marked BUSY when a vessel is observed inside its source GeoJSON
+  // polygon at <=0.5 kn for at least 15 minutes, with no AIS gap over 3 minutes.
+  // This catches real stationary vessels that have no matching port-call berth_id.
+  function prepareBerthSpatialFeatures(geo){
+    const out=[];
+    for(const f of (geo?.features||[])){
+      const p=f.properties||{}, g=f.geometry||{};
+      const polygons=g.type==='Polygon'?[g.coordinates]:g.type==='MultiPolygon'?g.coordinates:[];
+      if(!p.berth_id||!polygons.length)continue;
+      const rings=polygons.map(poly=>poly.map(ring=>ring.map(pt=>[Number(pt[0]),Number(pt[1])])));
+      const pts=rings.flat(2);
+      const xs=pts.map(x=>x[0]), ys=pts.map(x=>x[1]);
+      out.push({id:String(p.berth_id),rings,minLon:Math.min(...xs),maxLon:Math.max(...xs),minLat:Math.min(...ys),maxLat:Math.max(...ys)});
+    }
+    return out;
+  }
+  function pointInRing(lon,lat,ring){
+    let inside=false;
+    for(let i=0,j=ring.length-1;i<ring.length;j=i++){
+      const xi=ring[i][0], yi=ring[i][1], xj=ring[j][0], yj=ring[j][1];
+      const cross=((yi>lat)!==(yj>lat)) && (lon < (xj-xi)*(lat-yi)/((yj-yi)||1e-12)+xi);
+      if(cross)inside=!inside;
+    }
+    return inside;
+  }
+  function pointInBerthFeature(lon,lat,feature){
+    if(lon<feature.minLon||lon>feature.maxLon||lat<feature.minLat||lat>feature.maxLat)return false;
+    for(const polygon of feature.rings){
+      if(!polygon.length||!pointInRing(lon,lat,polygon[0]))continue;
+      let inHole=false;
+      for(let h=1;h<polygon.length;h++)if(pointInRing(lon,lat,polygon[h])){inHole=true;break;}
+      if(!inHole)return true;
+    }
+    return false;
+  }
+  function buildAISBerthOccupancyIntervals(trackGroups){
+    const result=new Map(), minDwell=900, maxGap=180, maxSog=0.5;
+    const addRun=(berthId,run)=>{
+      if(!berthId||run.length<5||run[run.length-1].t-run[0].t<minDwell)return;
+      if(!result.has(berthId))result.set(berthId,[]);
+      // Pad by one typical observation interval to cover the gaps between AIS reports.
+      result.get(berthId).push([run[0].t-90,run[run.length-1].t+90]);
+    };
+    for(const track of (trackGroups||[])){
+      const bySegment=new Map();
+      for(const p of (track.items||[])){
+        const seg=Number(p.track_segment)||0;
+        if(!bySegment.has(seg))bySegment.set(seg,[]);
+        const raw=String(p.timestamp||'');
+        const normalized=/Z$|[+-]\d\d:\d\d$/.test(raw)?raw.replace(' ','T'):raw.replace(' ','T')+'Z';
+        const t=Date.parse(normalized)/1000, lon=Number(p.longitude), lat=Number(p.latitude), sog=Number(p.sog);
+        if(Number.isFinite(t)&&Number.isFinite(lon)&&Number.isFinite(lat)&&Number.isFinite(sog))
+          bySegment.get(seg).push({t,lon,lat,sog});
+      }
+      for(const points of bySegment.values()){
+        points.sort((a,b)=>a.t-b.t);
+        let activeId=null, run=[];
+        const flush=()=>{addRun(activeId,run);activeId=null;run=[];};
+        for(const p of points){
+          let hit=null;
+          if(p.sog<=maxSog){
+            for(const f of berthSpatialFeatures){
+              if(pointInBerthFeature(p.lon,p.lat,f)){hit=f.id;break;}
+            }
+          }
+          if(hit && hit===activeId && run.length && p.t-run[run.length-1].t<=maxGap){
+            run.push(p);
+          }else{
+            flush();
+            if(hit){activeId=hit;run=[p];}
+          }
+        }
+        flush();
+      }
+    }
+    return result;
+  }
+
+  function rebuildBerthMarkers(records){
+    // The GeoJSON polygons are the berth markers: never add circular point pins.
+    // Put only a floating text label at each source-feature centroid. All 99 source
+    // berth polygons remain in the scene; labels show the historical call status.
+    berthMarkers.forEach(e=>viewer.entities.remove(e)); berthMarkers=[];
+    const intervals=new Map();
+    // For historical playback use the full occupancy look-back, not only calls
+    // whose start_time falls on the selected day. Otherwise an ongoing call
+    // that began yesterday is incorrectly labelled FREE today.
+    const statusRecords=(sceneMode==='historical' && berthOccupancyRecords.length) ? berthOccupancyRecords : records;
+    statusRecords.forEach(r=>{
+      const t=recordTimes(r); if(!r.berth_id || !Number.isFinite(t.start) || !Number.isFinite(t.end))return;
+      const key=String(r.berth_id); if(!intervals.has(key))intervals.set(key,[]); intervals.get(key).push([t.start,t.end]);
+    });
+    // Merge stationary AIS-in-polygon occupancy with historical call intervals.
+    // AIS corroboration is essential when a stopped vessel has no berth_id in calls.
+    if(sceneMode==='historical'){
+      for(const [key,list] of aisBerthOccupancyIntervals){
+        if(!intervals.has(key))intervals.set(key,[]);
+        intervals.get(key).push(...list);
+      }
+    }
+    // Merge overlapping berth intervals once, then use binary search at render time.
+    // This avoids scanning every historical call on every Cesium frame.
+    for(const [key,list] of intervals){
+      list.sort((a,b)=>a[0]-b[0]);
+      const merged=[];
+      for(const item of list){
+        const last=merged[merged.length-1];
+        if(last && item[0]<=last[1]) last[1]=Math.max(last[1],item[1]);
+        else merged.push([item[0],item[1]]);
+      }
+      intervals.set(key,merged);
+    }
+    const busyFill=C.Color.fromCssColorString('#f5b800').withAlpha(.58);
+    const freeFill=C.Color.fromCssColorString('#fff2a6').withAlpha(.25);
+    const busyLine=C.Color.fromCssColorString('#ffb300');
+    const freeLine=C.Color.fromCssColorString('#fff2a6');
+    const isBusy=(times,time)=>{
+      const sec=C.JulianDate.toDate(time).getTime()/1000;
+      let lo=0,hi=times.length-1;
+      while(lo<=hi){const mid=(lo+hi)>>1,range=times[mid];if(sec<range[0])hi=mid-1;else if(sec>range[1])lo=mid+1;else return true;}
+      return false;
+    };
+    const statusColor=(times,time)=>isBusy(times,time)?busyFill:freeFill;
+    const byId=new Map(berthRows.map(b=>[String(b.berth_id),b]));
+    if(berthSource){
+      berthSource.entities.values.forEach(feature=>{
+        const raw=feature.properties?.berth_id;
+        const id=raw?.getValue ? String(raw.getValue(C.JulianDate.now())) : String(raw??'');
+        const b=byId.get(id); if(!b||!feature.polygon)return;
+        const times=intervals.get(id)||[];
+        feature.polygon.material=new C.ColorMaterialProperty(new C.CallbackProperty(time=>statusColor(times,time),false));
+        feature.polygon.outlineColor=new C.CallbackProperty(time=>isBusy(times,time)
+          ? busyLine : freeLine,false);
+      });
+    }
+    berthRows.forEach(b=>{
+      const times=intervals.get(String(b.berth_id))||[];
+      const label=viewer.entities.add({name:`Berth ${b.berth_code} · ${b.berth_id}`,position:c3(Number(b.centroid_lon),Number(b.centroid_lat),24),
+        label:{text:new C.CallbackProperty(time=>{
+          const busy=isBusy(times,time);
+          return `${b.berth_code} · ${busy?'BUSY':'FREE'}`;
+        },false),font:'10px sans-serif',showBackground:true,backgroundColor:C.Color.BLACK.withAlpha(.78),
+          fillColor:C.Color.WHITE,outlineColor:C.Color.BLACK,outlineWidth:2,pixelOffset:new C.Cartesian2(0,-8),
+          distanceDisplayCondition:new C.DistanceDisplayCondition(0,26000),disableDepthTestDistance:1e7}});
+      berthMarkers.push(label);
+    });
+  }
+
+  function sampleShip(record,index,color){
+    const berth=berthById.get(String(record.berth_id));
+    const dest=(sceneMode==='scenario'&&berth)?[Number(berth.centroid_lon),Number(berth.centroid_lat)]
+      :record.longitude!=null&&record.latitude!=null?[Number(record.longitude),Number(record.latitude)]
+      :berth?[Number(berth.centroid_lon),Number(berth.centroid_lat)]:null;
+    if(!dest||!Number.isFinite(dest[0])||!Number.isFinite(dest[1]))return;
+    const outer=offsetAround(dest,index,1.0),holding=offsetAround(dest,index,.48),t=recordTimes(record);
+    const samples=[];
+    if(sceneMode==='scenario'){
+      addSegment(samples,outer,holding,t.arrival-900,t.arrival,10);
+      if(t.start-t.arrival>600){addHold(samples,holding,t.arrival,t.start-600);addSegment(samples,holding,dest,t.start-600,t.start,8)}
+      else addSegment(samples,holding,dest,t.arrival,t.start,8);
+    }else{
+      addSegment(samples,outer,dest,t.start-1200,t.start,14);
+    }
+    addHold(samples,dest,t.start,Math.max(t.end,t.start+1));
+    addSegment(samples,dest,outer,t.end,t.end+1200,12);
+    const clean=uniqueSampleList(samples); if(clean.length<2)return;
+    const pos=new C.SampledPositionProperty();
+    pos.forwardExtrapolationType=C.ExtrapolationType.NONE; pos.backwardExtrapolationType=C.ExtrapolationType.NONE;
+    pos.addSamples(clean.map(x=>jd(x.t)),clean.map(x=>c3(x.lon,x.lat,x.h)));
+    const orientation=new C.VelocityOrientationProperty(pos);
+    const colorCopy=record.counterfactual_copy===true;
+    const hullColor=colorCopy?C.Color.fromCssColorString('#e0aa58'):C.Color.fromCssColorString('#d7e5eb');
+    const hull=viewer.entities.add({name:`Vessel ${record.mmsi||record.vessel_id||record.call_id}`,availability:new C.TimeIntervalCollection([new C.TimeInterval({start:jd(clean[0].t),stop:jd(clean[clean.length-1].t)})]),position:pos,orientation,
+      box:{dimensions:new C.Cartesian3(82,15,8),material:hullColor,outline:true,outlineColor:C.Color.fromCssColorString('#223c4b')},
+      label:{text:new C.CallbackProperty(time=>{
+        const secs=C.JulianDate.toDate(time).getTime()/1000; const status=recordStatus(record,secs);
+        return `${record.mmsi||record.vessel_id||'VESSEL'} · ${status}`;
+      },false),font:'10px sans-serif',showBackground:true,backgroundColor:C.Color.BLACK.withAlpha(.78),pixelOffset:new C.Cartesian2(0,-20),distanceDisplayCondition:new C.DistanceDisplayCondition(0,9000),show:true},
+      description:`${sceneMode==='scenario'?'WHAT-IF MODEL':'HISTORICAL PORT CALL'}<br>Vessel: ${safe(record.mmsi||record.vessel_id)}<br>Call: ${safe(record.call_id||record.source_call_id)}<br>Berth cluster: ${safe(record.berth_code||record.berth_id||'unmatched')}`});
+    hull.__record=record;
+    const bridge=viewer.entities.add({position:offsetPosition(pos,orientation,-25,0,10),orientation,box:{dimensions:new C.Cartesian3(18,12,13),material:C.Color.fromCssColorString('#f1f2e8'),outline:true,outlineColor:C.Color.DARKSLATEGRAY}});bridge.__record=record;
+    const deckColors=['#397e96','#b36d43','#688f66'];
+    [-8,9,25].forEach((x,j)=>{
+      const container=viewer.entities.add({position:offsetPosition(pos,orientation,x,0,7),orientation,
+        box:{dimensions:new C.Cartesian3(13,11,7),material:C.Color.fromCssColorString(deckColors[j]),outline:true,outlineColor:C.Color.BLACK.withAlpha(.4)}});
+      container.__record=record; shipEntities.push(container);
+    });
+    shipEntities.push(hull,bridge);
+    // The route is deliberately an illustrative corridor, not an AIS-derived or safe navigation route.
+    const routePoints=sceneMode==='scenario'?routeCurve(outer,holding,8).concat(routeCurve(holding,dest,8).slice(1)).concat(routeCurve(dest,outer,8).slice(1)):
+      routeCurve(outer,dest,14).concat(routeCurve(dest,outer,14).slice(1));
+    const route=viewer.entities.add({name:`Illustrative route · ${record.mmsi||record.call_id}`,polyline:{positions:routePoints.map(p=>c3(p[0],p[1],5)),width:1.5,material:(colorCopy?C.Color.fromCssColorString('#e1ae5d'):C.Color.fromCssColorString('#48c8dc')).withAlpha(.32),clampToGround:false}});
+    routeEntities.push(route);
+    hull.__route=route;
+    activeRecords.push({record,position:pos,outer,dest,holding,times:t,hull});
+  }
+
+  function spreadSample(items,limit){
+    if(items.length<=limit)return items;
+    const out=[];for(let i=0;i<limit;i++)out.push(items[Math.round(i*(items.length-1)/(limit-1))]);return out;
+  }
+
+  function addSelection(record){
+    selectedRecord=record;
+    if(!record){$('selection').textContent='Select a vessel in the 3D scene to inspect its call, assigned berth and current state.';return;}
+    const t=recordTimes(record),wait=sceneMode==='scenario'?Math.max(0,(t.start-t.arrival)/3600):null;
+    $('selection').innerHTML=`<b style="color:#e7f1f5">VESSEL ${safe(record.mmsi||record.vessel_id||'—')}</b><br>Call ID: ${safe(record.call_id||record.source_call_id||'—')}<br>Berth cluster: ${safe(record.berth_code||record.berth_id||'unmatched')}<br>${sceneMode==='scenario'?`Modeled queue delay: <b>${wait.toFixed(2)} h</b><br>Assignment: ${safe(record.counterfactual_copy?'Counterfactual copy':'Historical template')}`:`Recorded dwell: <b>${(Number(record.duration_s||0)/3600).toFixed(2)} h</b>`}`;
+  }
+
+
+  function addActualAISTracks(trackGroups){
+    // Draw only a short, time-following tail behind each moving vessel. The former
+    // implementation drew every vessel's entire 24-hour track simultaneously,
+    // creating a tangled cyan carpet and a large GPU line workload.
+    const palette=['#18c8e5','#f0b34f','#6ed6a1','#9b9cff','#e18ac7','#82b9ee'];
+    let rendered=0, points=0;
+    const maxVessels=Math.max(1,Number($('density').value)||80);
+    const selectedTracks=trackGroups.slice(0,maxVessels);
+
+    selectedTracks.forEach((track,idx)=>{
+      const groups=new Map();
+      (track.items||[]).forEach(p=>{
+        const seg=Number(p.track_segment)||0;
+        if(!groups.has(seg))groups.set(seg,[]);
+        const rawTime=String(p.timestamp);
+        const t=Date.parse(rawTime.replace(' ','T')+(rawTime.endsWith('Z')?'':'Z'))/1000;
+        const lon=Number(p.longitude),lat=Number(p.latitude);
+        if(Number.isFinite(t)&&Number.isFinite(lon)&&Number.isFinite(lat)&&lat>=-90&&lat<=90&&lon>=-180&&lon<=180)
+          groups.get(seg).push({t,lon,lat,sog:Number(p.sog)||0,cog:Number(p.cog)||0,heading:Number(p.heading)||0});
+      });
+
+      for(const [segment,raw] of groups){
+        raw.sort((a,b)=>a.t-b.t);
+        const clean=[];
+        for(const p of raw){if(!clean.length||p.t>clean[clean.length-1].t)clean.push(p);}
+        // Split long observation gaps; never create a straight-line voyage across missing data.
+        const runs=[];let run=[];
+        for(const p of clean){
+          if(run.length&&p.t-run[run.length-1].t>300){if(run.length>1)runs.push(run);run=[];}
+          run.push(p);
+        }
+        if(run.length>1)runs.push(run);
+
+        for(const sourceRun of runs){
+          // Keep a bounded interpolation set for the moving hull. The full source
+          // observations remain available for counts and the short recent trail.
+          const MAX_RENDER_SAMPLES=240;
+          const pointsInRun=sourceRun.length>MAX_RENDER_SAMPLES
+            ? Array.from({length:MAX_RENDER_SAMPLES},(_,i)=>sourceRun[Math.round(i*(sourceRun.length-1)/(MAX_RENDER_SAMPLES-1))])
+            : sourceRun;
+          const pos=new C.SampledPositionProperty();
+          pos.setInterpolationOptions({interpolationDegree:1,interpolationAlgorithm:C.LinearApproximation});
+          pos.forwardExtrapolationType=C.ExtrapolationType.NONE;
+          pos.backwardExtrapolationType=C.ExtrapolationType.NONE;
+          pointsInRun.forEach(p=>pos.addSample(jd(p.t),c3(p.lon,p.lat,12)));
+          const orientation=new C.VelocityOrientationProperty(pos);
+          const name=track.vessel_name||track.mmsi||'AIS vessel';
+          const info={mmsi:track.mmsi,name,count:sourceRun.length};
+
+          // One lightweight route entity per segment; its positions are refreshed
+          // at 2 Hz from only the preceding 30 minutes (max 24 vertices).
+          const route=viewer.entities.add({
+            name:`Recent AIS trail · ${track.mmsi} · ${segment}`,
+            polyline:{positions:[],width:3.6,
+              material:C.Color.fromCssColorString(palette[idx%palette.length]).withAlpha(.88),
+              clampToGround:false}
+          });
+          route.__ais=true;route.__aisInfo=info;routeEntities.push(route);
+          aisTrailStates.push({route,points:sourceRun,lastIndex:-1,lastUpdate:0});
+
+          const entity=viewer.entities.add({
+            name:`AIS ${name} · ${track.mmsi} · segment ${segment}`,
+            availability:new C.TimeIntervalCollection([new C.TimeInterval({start:jd(sourceRun[0].t),stop:jd(sourceRun[sourceRun.length-1].t)})]),
+            position:pos,orientation,
+            box:{dimensions:new C.Cartesian3(48,10,5),material:C.Color.fromCssColorString('#d7e5eb'),outline:true,outlineColor:C.Color.fromCssColorString('#223c4b')},
+            label:{text:`${name} · ${track.mmsi}`,font:'10px sans-serif',
+              show:$('showLabels').checked,showBackground:true,
+              backgroundColor:C.Color.BLACK.withAlpha(.72),pixelOffset:new C.Cartesian2(0,-20),
+              distanceDisplayCondition:new C.DistanceDisplayCondition(0,5200),
+              disableDepthTestDistance:1e7}
+          });
+          entity.__ais=true;entity.__aisInfo=info;
+          shipEntities.push(entity);rendered++;points+=sourceRun.length;
+        }
+      }
+    });
+    aisVesselCount=rendered;aisPointCount=points;
+    $('aisStatus').textContent=`OBSERVED AIS · ${rendered} continuous track segments · ${points.toLocaleString()} recorded positions · short moving trails · gaps over 5 min split`;
+    updateAISTrails(true);
+  }
+
+  let lastTrailRefresh=0;
+  function updateAISTrails(force=false){
+    const nowPerf=performance.now();
+    if(!force&&nowPerf-lastTrailRefresh<500)return;
+    lastTrailRefresh=nowPerf;
+    if(!aisTrailStates.length)return;
+    const now=C.JulianDate.toDate(viewer.clock.currentTime).getTime()/1000;
+    const tailSeconds=1800; // 30 minutes of observed history, not the full-day spaghetti.
+    for(const state of aisTrailStates){
+      const pts=state.points;
+      // Binary search the last observation at or before the Cesium clock.
+      let lo=0,hi=pts.length-1;
+      while(lo<=hi){const mid=(lo+hi)>>1;if(pts[mid].t<=now)lo=mid+1;else hi=mid-1;}
+      const end=hi;
+      if(end<0){state.route.polyline.positions=[];continue;}
+      if(!force&&end===state.lastIndex&&nowPerf-state.lastUpdate<1200)continue;
+      state.lastIndex=end;state.lastUpdate=nowPerf;
+      const fromTime=now-tailSeconds;
+      let first=end;
+      while(first>0&&pts[first-1].t>=fromTime)first--;
+      // Cap trail geometry to 24 points, evenly spaced across the visible tail.
+      const count=end-first+1, take=Math.min(24,count), coords=[];
+      if(take>0){
+        for(let i=0;i<take;i++){
+          const at=take===1?end:first+Math.round(i*(count-1)/(take-1));
+          const p=pts[at];coords.push(c3(p.lon,p.lat,15));
+        }
+      }
+      state.route.polyline.positions=coords;
+    }
+  }
+
+  async function loadActualAIS(start,end){
+    const coverage=await api('/api/v1/ais/coverage');
+    if(!coverage.available){loadedAISTracks=[];aisBerthOccupancyIntervals=new Map();$('aisStatus').textContent='AIS dataset unavailable';return;}
+    const covStart=Date.parse(coverage.start_time.replace(' ','T')+'Z')/1000;
+    const covEnd=Date.parse(coverage.end_time.replace(' ','T')+'Z')/1000;
+    const from=Math.max(start,covStart),to=Math.min(end,covEnd);
+    if(to<=from){loadedAISTracks=[];aisBerthOccupancyIntervals=new Map();$('aisStatus').textContent=`AIS sample covers ${coverage.start_time} to ${coverage.end_time} UTC`;return;}
+    const iso=x=>new Date(x*1000).toISOString().slice(0,19);
+    // Prefer the compact bulk endpoint. If the running backend is an older
+    // PORTOS build, fall back to its original /tracks + /track/{mmsi} API.
+    // This keeps the existing database usable without requiring a backend swap.
+    let bulk=null, loadMode='bulk';
+    try{
+      bulk=await api(`/api/v1/ais/tracks/bulk?start=${encodeURIComponent(iso(from))}&end=${encodeURIComponent(iso(to))}&limit_vessels=120&min_points=2`);
+      loadedAISTracks=(bulk.items||[]).filter(x=>Array.isArray(x.items)&&x.items.length>1);
+    }catch(err){
+      if(!String(err.message||err).includes('API 404')) throw err;
+      loadMode='legacy';
+      $('aisStatus').textContent='Older backend detected · loading AIS with compatible endpoints…';
+      const index=await api(`/api/v1/ais/tracks?start=${encodeURIComponent(iso(from))}&end=${encodeURIComponent(iso(to))}&limit=2000&min_points=2`);
+      const byMmsi=new Map();
+      for(const row of (index.items||[])){
+        const key=String(row.mmsi);
+        if(!byMmsi.has(key)) byMmsi.set(key,{mmsi:key,vessel_name:row.vessel_name||key,point_count:0});
+        byMmsi.get(key).point_count+=Number(row.point_count)||0;
+      }
+      const vessels=[...byMmsi.values()].sort((a,b)=>b.point_count-a.point_count).slice(0,120);
+      const results=[];
+      // Keep local API load bounded; fetch eight vessel histories at a time.
+      for(let i=0;i<vessels.length;i+=8){
+        const batch=await Promise.all(vessels.slice(i,i+8).map(async v=>{
+          try{
+            const track=await api(`/api/v1/ais/track/${encodeURIComponent(v.mmsi)}?start=${encodeURIComponent(iso(from))}&end=${encodeURIComponent(iso(to))}`);
+            return {...track,vessel_name:v.vessel_name||v.mmsi};
+          }catch(e){console.warn('AIS vessel track skipped',v.mmsi,e);return null;}
+        }));
+        results.push(...batch.filter(x=>x&&Array.isArray(x.items)&&x.items.length>1));
+        $('aisStatus').textContent=`Loading historical AIS · ${Math.min(i+8,vessels.length)} / ${vessels.length} vessels…`;
+      }
+      loadedAISTracks=results;
+    }
+    const loadedPositions=loadedAISTracks.reduce((n,x)=>n+(x.items?.length||0),0);
+    $('aisStatus').textContent=`Loaded ${loadedAISTracks.length} observed AIS vessels · ${loadedPositions.toLocaleString()} recorded positions (${loadMode} API). Preparing positions…`;
+    if(!loadedAISTracks.length)throw new Error('AIS endpoints responded, but no vessel positions were returned for this date. Check /api/v1/ais/coverage and the AIS database.');
+    aisBerthOccupancyIntervals=buildAISBerthOccupancyIntervals(loadedAISTracks);
+
+  }
+
+  function rebuildScene(records,total,mode,start,end,summary=null){
+    sceneMode=mode;totalRecords=total;renderLimit=Number($('density').value)||120;
+    clearShips();
+    const visible=spreadSample(records,renderLimit);
+    // Keep observed AIS trails out of the counterfactual scene: mixing real tracks
+    // with synthetic scenario corridors makes the what-if paths unreadable.
+    if(mode==='historical') addActualAISTracks(loadedAISTracks);
+    if(mode==='scenario') visible.forEach((r,i)=>sampleShip(r,i));
+    rebuildBerthMarkers(records);
+    setClock(start,end);
+    // Keep the original PORTOS interface, but frame the Mississippi River berth corridor
+    // at terminal scale (the previous regional 65 km view hid berth labels and AIS tracks).
+    const terminalView={destination:C.Cartesian3.fromDegrees(-90.335,29.940,11500),orientation:{heading:C.Math.toRadians(0),pitch:C.Math.toRadians(-48),roll:0}};
+    viewer.camera.flyTo({...terminalView,duration:1.2});
+    sceneHome=()=>viewer.camera.flyTo({...terminalView,duration:1.0});
+    // Start the historical replay automatically so observed AIS positions move on first load.
+    viewer.clock.shouldAnimate=true;
+    addSelection(null);
+    if(summary){
+      const bs=summary.baseline?.modeled_queue_wait_hours||{};const ss=summary.scenario?.modeled_queue_wait_hours||{};
+      hudSummaryHtml=`<br><b>WHAT-IF MODEL · ${safe(summary.strategy||'')}</b><br>Demand ${fmt(summary.scenario?.demand_events)} (${fmt(summary.scenario?.historical_events)} historical + ${fmt(summary.scenario?.counterfactual_demand_copies)} counterfactual)<br>Active clusters ${fmt(summary.configuration?.active_berths)} · rendered ${fmt(visible.length)} / ${fmt(total)}<br>Mean modeled wait <b>${ss.mean??'—'} h</b> · P90 ${ss.p90??'—'} h · max ${ss.max??'—'} h<br>Baseline mean ${bs.mean??'—'} h · change ${summary.comparison?.mean_wait_change_hours??'—'} h<br><span style="color:#e2bc79">Waiting is modelled scheduling delay, not observed historical anchorage queue time.</span>`;
+    }else{
+      hudSummaryHtml=`<br><b>HISTORICAL NEW ORLEANS AIS REPLAY</b><br>${fmt(aisVesselCount)} actual AIS track segments · ${fmt(aisPointCount)} recorded positions · ${fmt(berthRows.length)} berth clusters<br>${fmt(total)} port-call events for berth context<br>Playback range ${new Date(start*1000).toISOString().slice(0,10)} → ${new Date(end*1000).toISOString().slice(0,10)}<br><span style="color:#e2bc79">Recorded call durations show dwell, not verified queue waiting.</span>`;
+    }
+    $('hud').innerHTML=hudSummaryHtml.replace(/^<br>/,'');
+    $('sceneBadge').innerHTML=`<strong>CESIUMJS 1.120</strong> · NEW ORLEANS · ${mode==='scenario'?'WHAT-IF SIMULATION':'HISTORICAL REPLAY'}`;
+    $('showRoutes').dispatchEvent(new Event('change'));
+  }
+
+  function currentHud(){
+    const now=C.JulianDate.toDate(viewer.clock.currentTime).getTime()/1000;
+    let approaching=0,waiting=0,docked=0,departed=0;
+    activeRecords.forEach(x=>{
+      const s=recordStatus(x.record,now);
+      if(s==='APPROACHING')approaching++;else if(s.startsWith('WAITING'))waiting++;else if(s.includes('BERTH')||s.includes('DWELL'))docked++;else departed++;
+    });
+    const when=new Date(now*1000).toISOString().replace('T',' ').slice(0,19)+' UTC';
+    const top=sceneMode==='scenario'?`<b>WHAT-IF LIVE STATE</b><br>Clock ${when}<br>Approaching ${approaching} · queue ${waiting} · at berth ${docked} · departed ${departed}<br>AIS track segments ${aisVesselCount} · modeled vessels ${activeRecords.length}`:
+      `<b>HISTORICAL LIVE STATE</b><br>Clock ${when}<br>Approaching ${approaching} · at stop/dwell ${docked} · completed ${departed}<br>Observed AIS vessels ${loadedAISTracks.length} · track segments ${aisVesselCount} · positions ${fmt(aisPointCount)}<br>Historical port-call events ${fmt(totalRecords)}`;
+    $('hud').innerHTML=top+hudSummaryHtml;
+  }
+
+  let lastHudUpdate=0;
+  viewer.clock.onTick.addEventListener(()=>{
+    updateAISTrails(false);
+    const now=performance.now(); if(now-lastHudUpdate>1000){lastHudUpdate=now;currentHud();}
+  });
+  viewer.screenSpaceEventHandler.setInputAction(event=>{
+    const picked=viewer.scene.pick(event.position);const entity=picked&&picked.id;
+    if(entity&&entity.__aisInfo){const a=entity.__aisInfo;$('selection').innerHTML=`<b style="color:#e7f1f5">OBSERVED AIS VESSEL</b><br>MMSI: ${safe(a.mmsi)}<br>Name: ${safe(a.name)}<br>Observed positions in segment: ${a.count}<br><span style="color:#e2bc79">AIS observations; not interpolated between long gaps.</span>`;viewer.selectedEntity=entity;}
+    else if(entity&&entity.__record){addSelection(entity.__record);viewer.selectedEntity=entity;}else addSelection(null);
+  },C.ScreenSpaceEventType.LEFT_CLICK);
+  $('showRoutes').addEventListener('change',()=>{routeEntities.forEach(e=>e.show=$('showRoutes').checked);shipEntities.filter(e=>e.__ais).forEach(e=>e.show=$('showRoutes').checked);});
+  $('showLabels').addEventListener('change',()=>shipEntities.filter(e=>e.label).forEach(e=>e.label.show=$('showLabels').checked));
+
+  async function fetchCallsRange(startIso,endIso){
+    const all=[]; let offset=0, total=Infinity;
+    while(offset<total){
+      const page=await api(`/api/v1/calls?start=${encodeURIComponent(startIso)}&end=${encodeURIComponent(endIso)}&limit=10000&offset=${offset}`);
+      const items=Array.isArray(page.items)?page.items:[];
+      all.push(...items); total=Number(page.total)||items.length;
+      if(!items.length)break;
+      offset+=items.length;
+      if(offset>=100000)break; // defensive ceiling for unexpectedly large API responses
+    }
+    return all;
+  }
+
+  async function loadHistorical(){
+    say('');$('apiStatus').textContent='LOADING DATA';$('apiStatus').className='status warn';
+    const date=$('date').value;if(!date)throw new Error('Choose a date in 2019.');
+    const start=new Date(`${date}T00:00:00Z`).getTime()/1000,end=date==='2019-06-15'?Date.parse('2019-06-16T23:59:59Z')/1000:start+86400;
+    setClock(start,Math.max(end,Date.parse('2019-06-16T23:59:59Z')/1000));
+    const selectedStart=date+'T00:00:00';
+    const selectedEnd=new Date(end*1000).toISOString().slice(0,19);
+    const lookbackStart=new Date((start-31*86400)*1000).toISOString().slice(0,19);
+    const [selectedCalls,occupancyCalls]=await Promise.all([
+      fetchCallsRange(selectedStart,selectedEnd),
+      fetchCallsRange(lookbackStart,selectedEnd)
+    ]);
+    const normalizeCall=c=>({...c,call_id:c.call_id,berth_id:c.berth_id==null?null:String(c.berth_id),counterfactual_copy:false});
+    const records=selectedCalls.map(normalizeCall);
+    berthOccupancyRecords=occupancyCalls.map(normalizeCall);
+    await loadActualAIS(start,end);
+    rebuildScene(records,records.length,'historical',start,Math.max(end,Date.parse('2019-06-16T23:59:59Z')/1000));
+    $('apiStatus').textContent='API ONLINE';$('apiStatus').className='status';
+  }
+
+  async function runScenario(){
+    say('');$('apiStatus').textContent='RUNNING WHAT-IF';$('apiStatus').className='status warn';
+    const date=$('date').value,horizon=Number($('horizon').value)||24;
+    if(!date)throw new Error('Choose a date in 2019.');
+    const start=new Date(`${date}T00:00:00Z`).getTime()/1000,end=start+horizon*3600;
+    const blocked=$('blocked').value.split(',').map(x=>x.trim()).filter(Boolean);
+    const payload={timestamp:`${date}T00:00:00`,horizon_hours:horizon,active_berths:Number($('activeBerths').value),traffic_multiplier:Number($('traffic').value),strategy:$('strategy').value,blocked_berth_ids:blocked};
+    // Scenario mode displays modeled assignments only; historical AIS is available
+    // in Historical Replay and is intentionally not overlaid on simulated routes.
+    loadedAISTracks=[];aisVesselCount=0;aisPointCount=0;$('aisStatus').textContent='Historical AIS trails hidden in What-If mode';
+    const [result,sourceCalls]=await Promise.all([
+      api('/api/v1/scenarios/allocate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)}),
+      api(`/api/v1/calls?start=${encodeURIComponent(date+'T00:00:00')}&end=${encodeURIComponent(new Date(end*1000).toISOString().slice(0,19))}&limit=10000&offset=0`)
+    ]);
+    const byId=new Map(sourceCalls.items.map(c=>[String(c.call_id),c]));
+    const records=result.items.map(item=>{
+      const original=byId.get(String(item.source_call_id));if(!original)return null;
+      return {...original,...item,call_id:item.demand_id,berth_id:String(item.berth_id),latitude:original.latitude,longitude:original.longitude,
+        start_time:item.assigned_start,end_time:item.assigned_end,arrival_proxy:item.arrival_proxy,counterfactual_copy:item.counterfactual_copy};
+    }).filter(Boolean);
+    currentScenario=result;
+    rebuildScene(records,result.items.length,'scenario',start,end,result);
+    $('apiStatus').textContent='SCENARIO READY';$('apiStatus').className='status';
+  }
+
+  $('loadHistorical').addEventListener('click',()=>loadHistorical().catch(e=>{say(e.message);$('apiStatus').textContent='API ERROR';$('apiStatus').className='status err'}));
+  $('runScenario').addEventListener('click',()=>runScenario().catch(e=>{say(e.message);$('apiStatus').textContent='SCENARIO ERROR';$('apiStatus').className='status err'}));
+  $('density').addEventListener('change',()=>{
+    if(sceneMode==='scenario'&&currentScenario)runScenario().catch(e=>say(e.message)); else loadHistorical().catch(e=>say(e.message));
+  });
+
+  async function boot(){
+    try{
+      $('apiStatus').textContent='CONNECTING';
+      await loadInfrastructure();
+      if($('mode').value==='scenario')await runScenario(); else await loadHistorical();
+    }catch(e){
+      const mismatch=String(e.message||e).includes('BACKEND UPDATE REQUIRED');
+      $('apiStatus').textContent=mismatch?'BACKEND OUTDATED':'API ERROR';$('apiStatus').className='status err';
+      say(`${e.message}\n\nBackend address: ${API}`);
+    }
+  }
+  boot();
+})();
+</script>
+</body>
+</html>

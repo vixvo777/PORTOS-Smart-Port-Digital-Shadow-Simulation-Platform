@@ -1,0 +1,100 @@
+
+# ==========================================
+# PORTOS - Smart Port Project
+# ==========================================
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+!.env.sample
+*.pem
+*.key
+secrets/
+credentials.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+ENV/
+pip-wheel-metadata/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Node / React / Vite
+node_modules/
+dist/
+build/
+.vite/
+coverage/
+*.tsbuildinfo
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+
+# Frontend environment files
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# IDE and editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+.cache/
+
+# Python generated files
+*.egg-info/
+.eggs/
+
+# Database files
+*.sqlite
+*.sqlite3
+*.db
+
+# Large generated datasets and outputs
+*.parquet
+*.feather
+*.pkl
+*.pickle
+*.joblib
+
+# Model outputs
+*.h5
+*.keras
+*.onnx
+*.pt
+*.pth
+*.model
+
+# Backup files
+*.bak
+*.old
+*.orig
+
+# Docker overrides
+docker-compose.override.yml
